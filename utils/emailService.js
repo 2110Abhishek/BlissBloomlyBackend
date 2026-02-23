@@ -3,10 +3,15 @@ const nodemailer = require('nodemailer');
 const sendOrderConfirmation = async (order) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -77,10 +82,15 @@ const sendOrderConfirmation = async (order) => {
 const sendOrderShippedEmail = async (order) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -117,10 +127,15 @@ const sendOrderShippedEmail = async (order) => {
 const sendOrderDeliveredEmail = async (order) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -156,10 +171,15 @@ const sendOrderDeliveredEmail = async (order) => {
 const sendWelcomeEmail = async (email) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
