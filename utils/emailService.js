@@ -12,6 +12,7 @@ const sendOrderConfirmation = async (order) => {
     const { data, error } = await resend.emails.send({
       from: `Bliss Bloomly <${FROM_EMAIL}>`,
       to: [order.customer.email],
+      bcc: [process.env.EMAIL_USER || 'agchoudhari2110@gmail.com'],
       subject: `Order Confirmation - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -82,6 +83,7 @@ const sendOrderShippedEmail = async (order) => {
     const { data, error } = await resend.emails.send({
       from: `Bliss Bloomly <${FROM_EMAIL}>`,
       to: [order.customer.email],
+      bcc: [process.env.EMAIL_USER || 'agchoudhari2110@gmail.com'],
       subject: `Order Shipped - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -117,6 +119,7 @@ const sendOrderDeliveredEmail = async (order) => {
     const { data, error } = await resend.emails.send({
       from: `Bliss Bloomly <${FROM_EMAIL}>`,
       to: [order.customer.email],
+      bcc: [process.env.EMAIL_USER || 'agchoudhari2110@gmail.com'],
       subject: `Order Delivered - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -151,6 +154,7 @@ const sendWelcomeEmail = async (email) => {
     const { data, error } = await resend.emails.send({
       from: `Bliss Bloomly <${FROM_EMAIL}>`,
       to: [email],
+      bcc: [process.env.EMAIL_USER || 'agchoudhari2110@gmail.com'],
       subject: `Welcome to the Bliss Bloomly Family! 👶`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
