@@ -2,16 +2,34 @@ const nodemailer = require('nodemailer');
 
 const sendOrderConfirmation = async (order) => {
   try {
+    console.log("Starting SMTP Connection for Order Confirmation...");
+    const cleanPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : '';
+    console.log(`Email Password Length after cleaning: ${cleanPass.length}`);
+
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
-      secure: true, // true for 465, false for other ports
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
-        pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
+        pass: cleanPass
       },
       tls: {
         rejectUnauthorized: false
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
+      debug: true,
+      logger: true
+    });
+
+    console.log("Verifying SMTP Connection...");
+    transporter.verify(function (error, success) {
+      if (error) {
+        console.log("SMTP Verification Failed:", error);
+      } else {
+        console.log("SMTP Verification Success: Server is ready to take our messages");
       }
     });
 
@@ -70,11 +88,12 @@ const sendOrderConfirmation = async (order) => {
       `
     };
 
+    console.log("Calling sendMail...");
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent: ' + info.response);
     return true;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending email inside sendOrderConfirmation:', error);
     return false;
   }
 };
