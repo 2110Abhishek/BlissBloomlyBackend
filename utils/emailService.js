@@ -8,8 +8,8 @@ const sendOrderConfirmation = async (order) => {
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: cleanPass
@@ -102,8 +102,8 @@ const sendOrderShippedEmail = async (order) => {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
@@ -147,8 +147,8 @@ const sendOrderDeliveredEmail = async (order) => {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
@@ -191,8 +191,8 @@ const sendWelcomeEmail = async (email) => {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '',
         pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '').trim() : ''
