@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
     try {
         const { uid, cartCategories, currentProductId } = req.query;
         let recommendedCategories = [];
-        let excludeProductIds = currentProductId ? [currentProductId] : [];
+        let excludeProductIds = currentProductId && mongoose.Types.ObjectId.isValid(currentProductId) ? [currentProductId] : [];
         let limit = 6;
 
         // 1. If user is logged in, extract categories from their past orders
@@ -20,9 +21,9 @@ router.get('/', async (req, res) => {
             const pastOrders = await Order.find({ firebaseUid: uid }).sort({ createdAt: -1 }).limit(5);
             pastOrders.forEach(order => {
                 order.items.forEach(item => {
-                    // Try to map item to a category (we might need to look up the product if item doesn't store category)
-                    // Let's assume some basic mapping or we just fetch the products
-                    excludeProductIds.push(item.productId); // don't recommend stuff they already bought
+                    if (item.productId && mongoose.Types.ObjectId.isValid(item.productId)) {
+                        excludeProductIds.push(item.productId);
+                    }
                 });
             });
 
