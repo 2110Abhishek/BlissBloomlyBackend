@@ -99,7 +99,7 @@ const sendOrderConfirmation = async (order) => {
         <tr>
           <td style="width: 60%"></td>
           <td>Shipping</td>
-          <td style="padding: 8px; white-space: nowrap">₹${(order.total > 500) ? 0 : 50}</td>
+          <td style="padding: 8px; white-space: nowrap">₹${(order.total > 500) ? 0 : 6}</td>
         </tr>
         <tr>
           <td style="width: 60%"></td>
