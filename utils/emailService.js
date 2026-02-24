@@ -1,17 +1,20 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-// Initialize Resend with the API key from environment
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM_EMAIL = 'onboarding@resend.dev'; // Resend's default testing sender
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 const sendOrderConfirmation = async (order) => {
   try {
-    console.log("Sending Order Confirmation via Resend to:", order.customer.email);
+    console.log("Sending Order Confirmation to:", order.customer.email);
 
-    const { data, error } = await resend.emails.send({
-      from: `Bliss Bloomly <${FROM_EMAIL}>`,
-      to: [order.customer.email],
+    const mailOptions = {
+      from: `"Bliss Bloomly" <${process.env.EMAIL_USER}>`,
+      to: order.customer.email,
       subject: `Order Confirmation - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -62,26 +65,22 @@ const sendOrderConfirmation = async (order) => {
           </p>
         </div>
       `
-    });
+    };
 
-    if (error) {
-      console.error('Resend Error Confirmation:', error);
-      return false;
-    }
-
-    console.log('Resend Confirmation Success:', data);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Order Confirmation Email sent successfully:', info.messageId);
     return true;
   } catch (error) {
-    console.error('Error sending confirmation email via Resend:', error);
+    console.error('Error sending confirmation email via Nodemailer:', error);
     return false;
   }
 };
 
 const sendOrderShippedEmail = async (order) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `Bliss Bloomly <${FROM_EMAIL}>`,
-      to: [order.customer.email],
+    const mailOptions = {
+      from: `"Bliss Bloomly" <${process.env.EMAIL_USER}>`,
+      to: order.customer.email,
       subject: `Order Shipped - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -98,25 +97,22 @@ const sendOrderShippedEmail = async (order) => {
           <p>You can track your order status in your account.</p>
         </div>
       `
-    });
+    };
 
-    if (error) {
-      console.error('Resend Error Shipped:', error);
-      return false;
-    }
-    console.log(`Shipped email sent to ${order.customer.email} via Resend`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Shipped email sent to ${order.customer.email} via Nodemailer`);
     return true;
   } catch (error) {
-    console.error('Error sending shipped email via Resend:', error);
+    console.error('Error sending shipped email via Nodemailer:', error);
     return false;
   }
 };
 
 const sendOrderDeliveredEmail = async (order) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `Bliss Bloomly <${FROM_EMAIL}>`,
-      to: [order.customer.email],
+    const mailOptions = {
+      from: `"Bliss Bloomly" <${process.env.EMAIL_USER}>`,
+      to: order.customer.email,
       subject: `Order Delivered - Order #${order._id}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -132,25 +128,22 @@ const sendOrderDeliveredEmail = async (order) => {
           <p>Thank you for shopping with Bliss Bloomly!</p>
         </div>
       `
-    });
+    };
 
-    if (error) {
-      console.error('Resend Error Delivered:', error);
-      return false;
-    }
-    console.log(`Delivered email sent to ${order.customer.email} via Resend`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Delivered email sent to ${order.customer.email} via Nodemailer`);
     return true;
   } catch (error) {
-    console.error('Error sending delivered email via Resend:', error);
+    console.error('Error sending delivered email via Nodemailer:', error);
     return false;
   }
 };
 
 const sendWelcomeEmail = async (email) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `Bliss Bloomly <${FROM_EMAIL}>`,
-      to: [email],
+    const mailOptions = {
+      from: `"Bliss Bloomly" <${process.env.EMAIL_USER}>`,
+      to: email,
       subject: `Welcome to the Bliss Bloomly Family! 👶`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -173,16 +166,13 @@ const sendWelcomeEmail = async (email) => {
           <p>The Bliss Bloomly Team</p>
         </div>
       `
-    });
+    };
 
-    if (error) {
-      console.error('Resend Error Welcome:', error);
-      return false;
-    }
-    console.log(`Welcome email sent to ${email} via Resend`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Welcome email sent to ${email} via Nodemailer`);
     return true;
   } catch (error) {
-    console.error('Error sending welcome email via Resend:', error);
+    console.error('Error sending welcome email via Nodemailer:', error);
     return false;
   }
 };
