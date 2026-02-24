@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 
 const startOrderScheduler = () => {
@@ -5,6 +6,12 @@ const startOrderScheduler = () => {
 
     // Run every 60 seconds
     setInterval(async () => {
+        // Skip run if database is not connected
+        if (mongoose.connection.readyState !== 1) {
+            console.log('Order Scheduler: Skipping run, database not connected.');
+            return;
+        }
+
         try {
             const now = new Date();
 
