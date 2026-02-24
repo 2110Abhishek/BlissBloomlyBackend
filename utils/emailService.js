@@ -49,36 +49,53 @@ const sendOrderConfirmation = async (order) => {
   const htmlMessage = `
 <div style="font-family: system-ui, sans-serif, Arial; font-size: 14px; color: #333; padding: 14px 8px; background-color: #f5f5f5;">
   <div style="max-width: 600px; margin: auto; background-color: #fff">
-    <div style="border-top: 6px solid #458500; padding: 16px">
-      <span style="font-size: 16px; vertical-align: middle;">
-        <strong>Thank You for Your Order</strong>
-      </span>
+    
+    <!-- Header Section -->
+    <div style="border-top: 6px solid #ff6b6b; padding: 20px 16px 0 16px">
+      <h1 style="color: #ff6b6b; margin-top: 0;">Thank you for your order!</h1>
+      <p style="font-size: 16px; margin-bottom: 4px;">Hi ${order.customer.name},</p>
+      <p style="margin-top: 0; color: #555;">We have received your order and are getting it ready.</p>
     </div>
+    
     <div style="padding: 0 16px">
-      <p>We'll send you tracking information when the order ships.</p>
-      <div style="text-align: left; font-size: 14px; padding-bottom: 4px; border-bottom: 2px solid #333;">
-        <strong>Order # ${order._id}</strong>
+      
+      <!-- Order Details Box -->
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin-top: 0; margin-bottom: 12px;">Order Details</h3>
+        <p style="margin: 4px 0;"><strong>Order ID:</strong> ${order._id}</p>
+        <p style="margin: 4px 0;"><strong>Total Amount:</strong> ${order.totalFormatted || '₹' + order.total}</p>
+        <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A'}</p>
+        <br/>
+        <p style="margin: 4px 0;"><strong>Shipping Address:</strong><br/>
+          ${order.customer.address}, ${order.customer.city}, ${order.customer.state} - ${order.customer.zip}
+        </p>
+        <p style="margin: 4px 0;"><strong>Phone:</strong> ${order.customer.phone}</p>
+        ${order.customer.altPhone ? `<p style="margin: 4px 0;"><strong>Alt Phone:</strong> ${order.customer.altPhone}</p>` : ''}
       </div>
+
+      <!-- Items Table Header -->
+      <h3 style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #333;">Items Ordered</h3>
+      
+      <!-- Dynamic Items List -->
       <table style="width: 100%; border-collapse: collapse">
         ${order.items.map(item => `
         <tr style="vertical-align: top">
-          <td style="padding: 24px 8px 0 4px; display: inline-block; width: max-content">
+          <td style="padding: 16px 8px 16px 4px; display: inline-block; width: max-content; border-bottom: 1px solid #eee;">
             <img style="height: 64px; object-fit: contain" height="64px" src="${item.image || 'https://via.placeholder.com/64'}" alt="item" />
           </td>
-          <td style="padding: 24px 8px 0 8px; width: 100%">
+          <td style="padding: 16px 8px 16px 8px; width: 100%; border-bottom: 1px solid #eee;">
             <div>${item.name}</div>
             <div style="font-size: 14px; color: #888; padding-top: 4px">QTY: ${item.quantity}</div>
           </td>
-          <td style="padding: 24px 4px 0 0; white-space: nowrap">
+          <td style="padding: 16px 4px 16px 0; white-space: nowrap; border-bottom: 1px solid #eee;">
             <strong>${item.priceFormatted || '₹' + item.price}</strong>
           </td>
         </tr>
         `).join('')}
       </table>
-      <div style="padding: 24px 0">
-        <div style="border-top: 2px solid #333"></div>
-      </div>
-      <table style="border-collapse: collapse; width: 100%; text-align: right">
+      
+      <!-- Cost Breakdown -->
+      <table style="border-collapse: collapse; width: 100%; text-align: right; margin-top: 20px; margin-bottom: 20px;">
         <tr>
           <td style="width: 60%"></td>
           <td>Shipping</td>
@@ -91,19 +108,25 @@ const sendOrderConfirmation = async (order) => {
         </tr>
         <tr>
           <td style="width: 60%"></td>
-          <td style="border-top: 2px solid #333">
-            <strong style="white-space: nowrap">Order Total</strong>
+          <td style="border-top: 2px solid #333; padding-top: 16px;">
+            <strong style="white-space: nowrap; font-size: 16px;">Order Total</strong>
           </td>
-          <td style="padding: 16px 8px; border-top: 2px solid #333; white-space: nowrap">
-            <strong>${order.totalFormatted || '₹' + order.total}</strong>
+          <td style="padding: 16px 8px 0; border-top: 2px solid #333; white-space: nowrap;">
+            <strong style="font-size: 16px;">${order.totalFormatted || '₹' + order.total}</strong>
           </td>
         </tr>
       </table>
+      
+      <p style="font-size: 13px; color: #666; padding-bottom: 16px; margin-top: 24px;">
+        If you have any questions, please reply to this email.
+      </p>
     </div>
   </div>
+  
+  <!-- Footer -->
   <div style="max-width: 600px; margin: auto; padding-top: 16px">
     <p style="color: #999; font-size: 12px; text-align: center;">
-      The email was sent to ${order.customer.email}<br />
+      This email was sent to ${order.customer.email}<br />
       You received this email because you placed an order at Bliss Bloomly.
     </p>
   </div>  
