@@ -39,6 +39,7 @@ const sellerSchema = new mongoose.Schema({
     },
 
     balance: { type: Number, default: 0 }, // For payouts
+    withdrawnAmount: { type: Number, default: 0 },
 
 }, { timestamps: true });
 

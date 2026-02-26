@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Seller = require('../models/Seller'); // Import Seller model
 
 // Middleware to verify seller (optional but recommended for security)
 // For MVP, we'll just trust the uid passed in query or body
@@ -39,14 +40,22 @@ router.get('/stats', async (req, res) => {
         const commissionPaid = parseFloat((grossEarnings * COMMISSION_RATE).toFixed(2));
         const netEarnings = parseFloat((grossEarnings - commissionPaid).toFixed(2));
 
+        // Get withdrawn amount from Seller model
+        const seller = await Seller.findOne({ userId: uid });
+        const withdrawnAmount = seller?.withdrawnAmount || 0;
+        const availableBalance = parseFloat((netEarnings - withdrawnAmount).toFixed(2));
+
         res.json({
             totalProducts: productCount,
             totalOrders,
             grossEarnings: parseFloat(grossEarnings.toFixed(2)),
             commissionPaid,
             netEarnings,
+            withdrawnAmount,
+            availableBalance,
             commissionRate: COMMISSION_RATE * 100, // 10
-            pendingOrders
+            pendingOrders,
+            bankAccount: seller?.bankAccount // return bank info for frontend display
         });
 
     } catch (err) {
@@ -55,6 +64,45 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// POST /api/seller/dashboard/withdraw - Withdraw earnings to bank account
+router.post('/withdraw', async (req, res) => {
+    try {
+        const { uid, amount } = req.body;
+        if (!uid || !amount) return res.status(400).json({ error: 'User ID and amount required' });
+
+        const seller = await Seller.findOne({ userId: uid });
+        if (!seller) return res.status(404).json({ error: 'Seller not found' });
+
+        // Calculate current net earnings to verify balance
+        const orders = await Order.find({ "items.sellerId": uid });
+        let grossEarnings = 0;
+        orders.forEach(order => {
+            const sellerItems = order.items.filter(item => item.sellerId === uid);
+            grossEarnings += sellerItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        });
+
+        const commissionPaid = parseFloat((grossEarnings * COMMISSION_RATE).toFixed(2));
+        const netEarnings = parseFloat((grossEarnings - commissionPaid).toFixed(2));
+        const withdrawnAmount = seller.withdrawnAmount || 0;
+        const availableBalance = parseFloat((netEarnings - withdrawnAmount).toFixed(2));
+
+        const requestAmount = parseFloat(amount);
+        if (requestAmount <= 0) return res.status(400).json({ error: 'Invalid withdrawal amount' });
+        if (requestAmount > availableBalance) return res.status(400).json({ error: 'Insufficient funds' });
+        if (!seller.bankAccount || !seller.bankAccount.accountNumber) {
+            return res.status(400).json({ error: 'No bank account linked' });
+        }
+
+        // Add to withdrawn amount
+        seller.withdrawnAmount = withdrawnAmount + requestAmount;
+        await seller.save();
+
+        res.json({ message: 'Withdrawal successful', withdrawnAmount: seller.withdrawnAmount, availableBalance: parseFloat((availableBalance - requestAmount).toFixed(2)) });
+    } catch (err) {
+        console.error("Withdrawal Error:", err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // GET /api/seller/dashboard/recent-orders?uid=USER_ID
 router.get('/recent-orders', async (req, res) => {
