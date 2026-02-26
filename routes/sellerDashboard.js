@@ -23,16 +23,23 @@ router.get('/stats', async (req, res) => {
         const orders = await Order.find({ "items.sellerId": uid });
 
         // 3. Calculate Gross Earnings & Total Orders
-        let grossEarnings = 0;
+        let totalGrossEarnings = 0; // Everything
+        let grossEarnings = 0; // Only Delivered
         let totalOrders = orders.length;
         let pendingOrders = 0;
 
         orders.forEach(order => {
             const sellerItems = order.items.filter(item => item.sellerId === uid);
             const orderTotalForSeller = sellerItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            grossEarnings += orderTotalForSeller;
 
-            if (order.status === 'pending' || order.status === 'Processing') {
+            totalGrossEarnings += orderTotalForSeller;
+
+            // Only credit earnings to the seller if the order is Delivered
+            if (order.status === 'Delivered') {
+                grossEarnings += orderTotalForSeller;
+            }
+
+            if (order.status === 'pending' || order.status === 'Processing' || order.status === 'Shipped') {
                 pendingOrders++;
             }
         });
@@ -73,12 +80,14 @@ router.post('/withdraw', async (req, res) => {
         const seller = await Seller.findOne({ userId: uid });
         if (!seller) return res.status(404).json({ error: 'Seller not found' });
 
-        // Calculate current net earnings to verify balance
+        // Calculate current net earnings to verify balance (ONLY DELIVERED)
         const orders = await Order.find({ "items.sellerId": uid });
         let grossEarnings = 0;
         orders.forEach(order => {
-            const sellerItems = order.items.filter(item => item.sellerId === uid);
-            grossEarnings += sellerItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            if (order.status === 'Delivered') {
+                const sellerItems = order.items.filter(item => item.sellerId === uid);
+                grossEarnings += sellerItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            }
         });
 
         const commissionPaid = parseFloat((grossEarnings * COMMISSION_RATE).toFixed(2));
