@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-const { sendOrderConfirmation, sendOrderShippedEmail, sendOrderDeliveredEmail } = require('../utils/emailService');
+const { sendOrderConfirmation, sendOrderShippedEmail, sendOrderDeliveredEmail, sendOutForDeliveryEmail } = require('../utils/emailService');
 const Razorpay = require('razorpay');
 
 // Helper to get Razorpay instance
@@ -46,6 +46,8 @@ const updateOrderStatusBasedOnTime = async (order) => {
       order.status = 'Out for Delivery';
       order.trackingHistory.push({ status: 'Out for Delivery', description: 'Agent is out for delivery.', timestamp: now });
       updated = true;
+      // Send Out for Delivery Email
+      sendOutForDeliveryEmail(order).catch(e => console.error("Failed to send out for delivery email", e));
     }
     else if (order.status === 'Out for Delivery' && diffHours > 48) {
       order.status = 'Delivered';
@@ -448,6 +450,8 @@ router.put('/:id/status', async (req, res) => {
     // Send Emails for Manual Updates
     if (status === 'Shipped') {
       sendOrderShippedEmail(order).catch(e => console.error("Failed to send shipped email (manual)", e));
+    } else if (status === 'Out for Delivery') {
+      sendOutForDeliveryEmail(order).catch(e => console.error("Failed to send out for delivery email (manual)", e));
     } else if (status === 'Delivered') {
       sendOrderDeliveredEmail(order).catch(e => console.error("Failed to send delivered email (manual)", e));
     }

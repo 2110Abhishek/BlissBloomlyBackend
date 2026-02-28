@@ -143,40 +143,106 @@ const sendOrderConfirmation = async (order) => {
 
 const sendOrderShippedEmail = async (order) => {
   const htmlMessage = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #3b82f6;">Your Order has been Shipped! 🚚</h1>
-          <p>Hi ${order.customer.name},</p>
-          <p>Great news! Your order is on its way.</p>
-          <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-             <p><strong>Order ID:</strong> ${order._id}</p>
-             <p><strong>Expected Delivery:</strong> ${order.expectedDelivery ? new Date(order.expectedDelivery).toDateString() : 'Coming soon'}</p>
-          </div>
-          <p>You can track your order status in your account.</p>
-        </div>
-    `;
+<div style="font-family: system-ui, sans-serif, Arial; font-size: 14px; color: #333; padding: 14px 8px; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: auto; background-color: #fff">
+    <div style="border-top: 6px solid #3b82f6; padding: 20px 16px 0 16px">
+      <h1 style="color: #3b82f6; margin-top: 0;">Your Order has been Shipped! 🚚</h1>
+      <p style="font-size: 16px; margin-bottom: 4px;">Hi ${order.customer.name},</p>
+      <p style="margin-top: 0; color: #555;">Great news! Your order is on its way and will be with you shortly.</p>
+    </div>
+    <div style="padding: 0 16px">
+      <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #bae6fd;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; color: #0369a1;">Delivery Details</h3>
+        <p style="margin: 4px 0;"><strong>Order ID:</strong> ${order._id}</p>
+        <p style="margin: 4px 0;"><strong>Tracking ID:</strong> ${order.trackingId || 'Generated soon'}</p>
+        <p style="margin: 4px 0;"><strong>Expected Delivery:</strong> ${order.expectedDelivery ? new Date(order.expectedDelivery).toDateString() : 'Coming soon'}</p>
+      </div>
+      <h3 style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #333;">Items in Shipment</h3>
+      <table style="width: 100%; border-collapse: collapse">
+        ${order.items.map(item => `
+        <tr style="vertical-align: top">
+          <td style="padding: 10px 8px; border-bottom: 1px solid #eee; width: 64px;">
+            <img style="height: 48px; object-fit: contain" height="48px" src="${item.image || 'https://via.placeholder.com/48'}" alt="item" />
+          </td>
+          <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">
+            <div>${item.name} x ${item.quantity}</div>
+          </td>
+        </tr>
+        `).join('')}
+      </table>
+      <p style="margin-top: 24px; text-align: center;">
+        <a href="https://blissbloomly.vercel.app/orders/${order._id}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Track Your Order</a>
+      </p>
+      <p style="font-size: 13px; color: #666; padding-bottom: 16px; margin-top: 24px;">
+        Need help? Contact us anytime.
+      </p>
+    </div>
+  </div>
+</div>
+  `;
 
   return await sendEmailJsWrapper(
     order.customer.email,
     order.customer.name,
-    `Order Shipped - Order #${order._id}`,
+    `Your Order #${order._id} has been Shipped!`,
+    htmlMessage
+  );
+};
+
+const sendOutForDeliveryEmail = async (order) => {
+  const htmlMessage = `
+<div style="font-family: system-ui, sans-serif, Arial; font-size: 14px; color: #333; padding: 14px 8px; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: auto; background-color: #fff">
+    <div style="border-top: 6px solid #f59e0b; padding: 20px 16px 0 16px">
+      <h1 style="color: #f59e0b; margin-top: 0;">Order Out for Delivery! 🛵</h1>
+      <p style="font-size: 16px; margin-bottom: 4px;">Hi ${order.customer.name},</p>
+      <p style="margin-top: 0; color: #555;">Our delivery hero is on the way to your location. Please keep your phone reachable.</p>
+    </div>
+    <div style="padding: 0 16px">
+      <div style="background: #fffbeb; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fef3c7;">
+        <p style="margin: 4px 0;"><strong>Order ID:</strong> ${order._id}</p>
+        <p style="margin: 4px 0;"><strong>Delivery Address:</strong> ${order.customer.address}, ${order.customer.city}</p>
+      </div>
+      <p style="font-size: 13px; color: #666; padding-bottom: 16px;">
+        Thank you for choosing Bliss Bloomly!
+      </p>
+    </div>
+  </div>
+</div>
+  `;
+
+  return await sendEmailJsWrapper(
+    order.customer.email,
+    order.customer.name,
+    `Order status: Out for Delivery - #${order._id}`,
     htmlMessage
   );
 };
 
 const sendOrderDeliveredEmail = async (order) => {
   const htmlMessage = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #10b981;">Your Order has been Delivered! 🎉</h1>
-          <p>Hi ${order.customer.name},</p>
-          <p>Your order has been delivered successfully. We hope you love your purchase!</p>
-          <p>Thank you for shopping with Bliss Bloomly!</p>
-        </div>
-    `;
+<div style="font-family: system-ui, sans-serif, Arial; font-size: 14px; color: #333; padding: 14px 8px; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: auto; background-color: #fff">
+    <div style="border-top: 6px solid #10b981; padding: 20px 16px 0 16px">
+      <h1 style="color: #10b981; margin-top: 0;">Delivered! 🎉</h1>
+      <p style="font-size: 16px; margin-bottom: 4px;">Hi ${order.customer.name},</p>
+      <p style="margin-top: 0; color: #555;">Your order #${order._id} has been successfully delivered. We hope you and your little one love it!</p>
+    </div>
+    <div style="padding: 20px 16px">
+       <div style="text-align: center; border: 1px solid #eee; padding: 20px; border-radius: 8px;">
+          <h3 style="margin-top: 0;">How did we do?</h3>
+          <p>We'd love to hear your feedback on the items.</p>
+          <a href="https://blissbloomly.vercel.app/account/orders" style="color: #10b981; font-weight: bold;">Leave a Review</a>
+       </div>
+    </div>
+  </div>
+</div>
+  `;
 
   return await sendEmailJsWrapper(
     order.customer.email,
     order.customer.name,
-    `Order Delivered - Order #${order._id}`,
+    `Delivered: Your Order #${order._id} is here!`,
     htmlMessage
   );
 };
