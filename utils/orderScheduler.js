@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const { sendOrderShippedEmail, sendOrderDeliveredEmail, sendOutForDeliveryEmail } = require('./emailService');
 
 const startOrderScheduler = () => {
     console.log('Starting Order Status Scheduler...');
@@ -57,37 +58,37 @@ const startOrderScheduler = () => {
 
             // 3. Packed -> Shipped (After 2 hours)
             const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-            await Order.updateMany(
-                {
-                    status: 'Packed',
-                    createdAt: { $lte: twoHoursAgo }
-                },
-                {
-                    $set: { status: 'Shipped' },
-                    $push: {
-                        trackingHistory: {
-                            status: 'Shipped',
-                            location: 'Dispatch Center',
-                            timestamp: now,
-                            description: 'Order has been shipped.'
-                        }
-                    }
+            const packedOrders = await Order.find({
+                status: 'Packed',
+                createdAt: { $lte: twoHoursAgo }
+            });
+
+            for (const order of packedOrders) {
+                order.status = 'Shipped';
+                // Generate tracking ID if missing
+                if (!order.trackingId) {
+                    order.trackingId = 'TRK' + Math.floor(100000 + Math.random() * 900000);
+                    const deliveryDate = new Date();
+                    deliveryDate.setDate(deliveryDate.getDate() + 5);
+                    order.expectedDelivery = deliveryDate;
                 }
-            );
+                order.trackingHistory.push({
+                    status: 'Shipped',
+                    location: 'Dispatch Center',
+                    timestamp: now,
+                    description: 'Order has been shipped.'
+                });
+                await order.save();
+                // Send Email
+                sendOrderShippedEmail(order).catch(e => console.error("Scheduler: Failed to send shipped email", e));
+            }
 
-            // 4. Shipped -> Out for Delivery (Next Day 9:00 AM)
-            // Logic: If status is Shipped AND (Now is after 9 AM AND CreatedAt is before today 12:00 AM i.e. previous day)
-            // Simpler Logic for MVP: If Shipped and time > 12 hours (approximating next day)
-            // Strict User Requirement: "next day morning"
-            // Let's check individually for better precision or use a range.
-            // We'll iterate to handle "Next Day 9 AM" logic more accurately for a demo.
-            // If today is > createdAt day AND current hour >= 9
-
-            const ordersToDeliver = await Order.find({
+            // 4. Shipped -> Out for Delivery & Out for Delivery -> Delivered
+            const activeOrders = await Order.find({
                 status: { $in: ['Shipped', 'Out for Delivery'] }
             });
 
-            for (const order of ordersToDeliver) {
+            for (const order of activeOrders) {
                 const orderDate = new Date(order.createdAt);
                 const nextDay = new Date(orderDate);
                 nextDay.setDate(orderDate.getDate() + 1);
@@ -107,6 +108,8 @@ const startOrderScheduler = () => {
                         description: 'Item is out for delivery.'
                     });
                     await order.save();
+                    // Send Email
+                    sendOutForDeliveryEmail(order).catch(e => console.error("Scheduler: Failed to send out for delivery email", e));
                 }
 
                 // Out for Delivery -> Delivered
@@ -120,6 +123,8 @@ const startOrderScheduler = () => {
                         description: 'Item has been delivered.'
                     });
                     await order.save();
+                    // Send Email
+                    sendOrderDeliveredEmail(order).catch(e => console.error("Scheduler: Failed to send delivered email", e));
                 }
             }
 

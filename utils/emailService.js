@@ -268,4 +268,4 @@ const sendWelcomeEmail = async (email) => {
   );
 };
 
-module.exports = { sendOrderConfirmation, sendOrderShippedEmail, sendOrderDeliveredEmail, sendWelcomeEmail };
+module.exports = { sendOrderConfirmation, sendOrderShippedEmail, sendOrderDeliveredEmail, sendOutForDeliveryEmail, sendWelcomeEmail };
