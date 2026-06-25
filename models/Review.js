@@ -49,4 +49,7 @@ const reviewSchema = new mongoose.Schema({
     }
 });
 
+// Indexes for performance
+reviewSchema.index({ productId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Review', reviewSchema);

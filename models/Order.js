@@ -58,4 +58,8 @@ const orderSchema = new mongoose.Schema({
   firebaseUid: String
 }, { timestamps: true });
 
+// Indexes for performance
+orderSchema.index({ firebaseUid: 1, createdAt: -1 });
+orderSchema.index({ status: 1 });
+
 module.exports = mongoose.model('Order', orderSchema);

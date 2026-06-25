@@ -8,6 +8,7 @@ const path = require('path');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
+const compression = require('compression');
 const { globalLimiter } = require('./middleware/rateLimiters');
 const logger = require('./utils/logger');
 
@@ -44,6 +45,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Middleware
+app.use(compression());
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use(morgan('dev'));
