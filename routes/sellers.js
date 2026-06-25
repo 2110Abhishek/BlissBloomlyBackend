@@ -1,10 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const Seller = require('../models/Seller');
+const authenticate = require('../middleware/authenticate');
+const verifyAdmin = require('../middleware/verifyAdmin');
+const { body, query, param } = require('express-validator');
+const validate = require('../middleware/validate');
+const { authLimiter } = require('../middleware/rateLimiters');
+const logger = require('../utils/logger');
 
 // GET /api/sellers - Get all sellers (with optional status filter)
 // GET /api/sellers - Get all sellers (with optional status filter)
-router.get('/', async (req, res) => {
+router.get('/', [
+    query('status').optional().isString().trim().escape(),
+    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    validate
+], async (req, res) => {
     try {
         const { status } = req.query; // ?status=pending or ?status=approved
         const page = parseInt(req.query.page) || 1;
@@ -37,11 +48,9 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/sellers/me - Check if current user is a seller
-router.get('/me', async (req, res) => {
+router.get('/me', authenticate, async (req, res) => {
     try {
-        // We expect uid to be passed in query or header for now (MVP)
-        // Ideally should come from middleware after token verification
-        const { uid } = req.query;
+        const uid = req.user.uid;
 
         if (!uid) {
             return res.status(400).json({ error: 'User ID required' });
@@ -60,13 +69,19 @@ router.get('/me', async (req, res) => {
 });
 
 // POST /api/sellers/register - Register as a new seller
-router.post('/register', async (req, res) => {
+router.post('/register', authenticate, authLimiter, [
+    body('email').isEmail().normalizeEmail(),
+    body('businessName').isString().trim().notEmpty().escape(),
+    body('panNumber').isString().trim().notEmpty().escape(),
+    body('gstNumber').optional({ checkFalsy: true }).isString().trim().escape(),
+    body('phone').isString().trim().notEmpty().escape(),
+    body('bankAccount').isObject().withMessage('Bank account details required'),
+    body('address').isObject().withMessage('Address details required'),
+    validate
+], async (req, res) => {
     try {
-        const { userId, email, businessName, panNumber, gstNumber, bankAccount, address, phone } = req.body;
-
-        if (!userId || !email || !businessName || !panNumber || !phone) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
+        const { email, businessName, panNumber, gstNumber, bankAccount, address, phone } = req.body;
+        const userId = req.user.uid;
 
         const existingSeller = await Seller.findOne({ userId });
         if (existingSeller) {
@@ -87,17 +102,21 @@ router.post('/register', async (req, res) => {
         });
 
         await newSeller.save();
+        logger.info(`Successful seller registration for email: ${email} (IP: ${req.ip})`);
         res.status(201).json(newSeller);
-
     } catch (err) {
-        console.error('POST /sellers/register error', err);
+        logger.error(`Seller registration failed: ${err.message} (IP: ${req.ip})`);
+        console.error('Error registering seller', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
 // PUT /api/sellers/:id/approve - Admin approves seller
 // Note: In real app, secure this with Admin Middleware
-router.put('/:id/approve', async (req, res) => {
+router.put('/:id/approve', authenticate, verifyAdmin, [
+    param('id').isMongoId().withMessage('Valid ID required'),
+    validate
+], async (req, res) => {
     try {
         const sellerId = req.params.id;
         const seller = await Seller.findByIdAndUpdate(
@@ -112,7 +131,7 @@ router.put('/:id/approve', async (req, res) => {
 });
 
 // GET /api/sellers/pending - Admin fetches pending sellers
-router.get('/pending', async (req, res) => {
+router.get('/pending', authenticate, verifyAdmin, async (req, res) => {
     try {
         const users = await Seller.find({ verificationStatus: 'pending' });
         res.json(users);
@@ -122,7 +141,10 @@ router.get('/pending', async (req, res) => {
 });
 
 // PUT /api/sellers/:id/block - Admin blocks seller
-router.put('/:id/block', async (req, res) => {
+router.put('/:id/block', authenticate, verifyAdmin, [
+    param('id').isMongoId().withMessage('Valid ID required'),
+    validate
+], async (req, res) => {
     try {
         const sellerId = req.params.id;
         const seller = await Seller.findByIdAndUpdate(
@@ -137,7 +159,10 @@ router.put('/:id/block', async (req, res) => {
 });
 
 // DELETE /api/sellers/:id - Admin deletes seller
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, verifyAdmin, [
+    param('id').isMongoId().withMessage('Valid ID required'),
+    validate
+], async (req, res) => {
     try {
         const sellerId = req.params.id;
         await Seller.findByIdAndDelete(sellerId);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const { extractSearchAttributes } = require('../utils/searchExtractor');
+const authenticate = require('../middleware/authenticate');
 
 // GET /api/products
 // optional query: ?category=clothing
@@ -205,9 +206,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/products - Create a new product
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
-    const { name, price, description, category, image, images, tags, userId, fulfillmentMethod, sku, brand, stock } = req.body;
+    const { name, price, description, category, image, images, tags, fulfillmentMethod, sku, brand, stock } = req.body;
+    const userId = req.user.uid;
 
     // Basic validation
     if (!name || !price || !category || (!image && (!images || images.length === 0))) {
@@ -261,7 +263,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/products/:id - Update a product
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { name, price, description, category, image, images, tags, fulfillmentMethod, sku, brand, stock } = req.body;
@@ -269,6 +271,12 @@ router.put('/:id', async (req, res) => {
     // Find product
     const product = await Product.findOne({ id });
     if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    // Verify ownership or Admin
+    const isAdmin = req.user.email === 'blissbloomly@gmail.com';
+    if (product.userId !== req.user.uid && !isAdmin) {
+      return res.status(403).json({ error: 'Access denied. You can only edit your own products.' });
+    }
 
     // Update fields
     if (name) product.name = name;

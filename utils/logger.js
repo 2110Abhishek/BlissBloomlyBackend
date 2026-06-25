@@ -1,16 +1,29 @@
-//utils/logger.js
-const isDev = process.env.NODE_ENV === 'development';
+const winston = require('winston');
 
-const logger = {
-  info: (...args) => {
-    if (isDev) console.log('[INFO]', ...args);
-  },
-  warn: (...args) => {
-    if (isDev) console.warn('[WARN]', ...args);
-  },
-  error: (...args) => {
-    console.error('[ERROR]', ...args);
-  }
-};
+// Define log format
+const logFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.errors({ stack: true }),
+  winston.format.splat(),
+  winston.format.json()
+);
 
-export default logger;
+// Create logger instance
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: logFormat,
+  defaultMeta: { service: 'babybliss-backend' },
+  transports: [
+    // Output all logs to console in a structured JSON format
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(
+          (info) => `${info.timestamp} ${info.level}: ${info.message}`
+        )
+      )
+    })
+  ]
+});
+
+module.exports = logger;

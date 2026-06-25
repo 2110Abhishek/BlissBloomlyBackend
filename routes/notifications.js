@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const webpush = require('web-push');
 const Subscription = require('../models/Subscription');
+const authenticate = require('../middleware/authenticate');
+const verifyAdmin = require('../middleware/verifyAdmin');
 
 // Generated VAPID Keys
 const publicVapidKey = 'BOIjVJ4YzjQb3lxyEiosjABJnfdtyfwpzuof4XZW1UbtZpDynfigAHAXP2TzLMd6iFNkFpOALvYGGhV_9q5Evus';
@@ -31,7 +33,7 @@ router.post('/subscribe', async (req, res) => {
 });
 
 // Admin Send Notification Route
-router.post('/send', async (req, res) => {
+router.post('/send', authenticate, verifyAdmin, async (req, res) => {
     const { title, body, url } = req.body;
     const payload = JSON.stringify({
         title,
@@ -71,9 +73,9 @@ router.post('/send', async (req, res) => {
 });
 
 // Get Notifications for a User
-router.get('/user/:uid', async (req, res) => {
+router.get('/user/:uid', authenticate, async (req, res) => {
     try {
-        const { uid } = req.params;
+        const uid = req.user.uid;
         // Get global notifications OR notifications specific to this user
         // Sort by newest first
         const notifications = await Notification.find({
@@ -100,9 +102,9 @@ router.get('/user/:uid', async (req, res) => {
 });
 
 // Mark Notification as Read
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', authenticate, async (req, res) => {
     try {
-        const { uid } = req.body; // User ID reading it
+        const uid = req.user.uid;
         if (!uid) return res.status(400).json({ error: 'User ID required' });
 
         const notification = await Notification.findById(req.params.id);
@@ -116,6 +118,9 @@ router.put('/:id/read', async (req, res) => {
             }
         } else {
             // Personal notification
+            if (notification.userId !== uid) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
             notification.isRead = true;
             await notification.save();
         }

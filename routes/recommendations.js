@@ -3,13 +3,14 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const { aiLimiter } = require('../middleware/rateLimiters');
 
 // GET /api/recommendations
 // Query Params:
 //   uid: String (Firebase UID of the user, optional)
 //   cartCategories: String (comma separated string of categories currently in cart, optional)
 //   currentProductId: String (if on product detail page, optional)
-router.get('/', async (req, res) => {
+router.get('/', aiLimiter, async (req, res) => {
     try {
         const { uid, cartCategories, currentProductId } = req.query;
         let recommendedCategories = [];

@@ -1,10 +1,10 @@
 const axios = require('axios');
 
 // EmailJS Configuration
-const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_sbyj327'; // User's service ID
-const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_placeholder'; // Needs to be set in env
-const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'public_key_placeholder'; // Needs to be set in env
-const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY || 'private_key_placeholder'; // Needs to be set in env
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
 const sendEmailJsWrapper = async (to_email, to_name, subject, html_message) => {
   try {

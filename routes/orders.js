@@ -4,6 +4,10 @@ const router = express.Router();
 const Order = require('../models/Order');
 const { sendOrderConfirmation, sendOrderShippedEmail, sendOrderDeliveredEmail, sendOutForDeliveryEmail } = require('../utils/emailService');
 const Razorpay = require('razorpay');
+const { body, param, query } = require('express-validator');
+const validate = require('../middleware/validate');
+const authenticate = require('../middleware/authenticate');
+const verifyAdmin = require('../middleware/verifyAdmin');
 
 // Helper to get Razorpay instance
 const getRazorpayInstance = () => {
@@ -95,7 +99,20 @@ const updateOrderStatusBasedOnTime = async (order) => {
 };
 
 // create order
-router.post('/', async (req, res) => {
+router.post('/', [
+    body('items').isArray({ min: 1 }).withMessage('Items are required'),
+    body('items.*.productId').notEmpty(),
+    body('items.*.quantity').isInt({ min: 1 }),
+    body('subtotal').isFloat({ min: 0 }),
+    body('shipping').optional().isFloat({ min: 0 }),
+    body('total').isFloat({ min: 0 }),
+    body('customer').isObject(),
+    body('customer.name').isString().notEmpty().escape(),
+    body('customer.email').isEmail().normalizeEmail(),
+    body('paymentMethod').isString().notEmpty().escape(),
+    body('paymentStatus').isString().notEmpty().escape(),
+    validate
+], async (req, res) => {
   try {
     const { items, subtotal, shipping = 0, total, totalFormatted, customer, paymentMethod, paymentStatus, firebaseUid, paymentId } = req.body;
 
@@ -191,7 +208,11 @@ router.post('/', async (req, res) => {
 });
 
 // get orders (for debugging/admin)
-router.get('/', async (req, res) => {
+router.get('/', [
+    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    validate
+], async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -218,8 +239,17 @@ router.get('/', async (req, res) => {
 });
 
 // get orders for a specific user (Buyer) with auto-update
-router.get('/user/:uid', async (req, res) => {
+router.get('/user/:uid', authenticate, [
+    param('uid').isString().notEmpty(),
+    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    validate
+], async (req, res) => {
   try {
+    if (req.user.uid !== req.params.uid) {
+      return res.status(403).json({ message: 'Access denied. You can only view your own orders.' });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -250,7 +280,12 @@ router.get('/user/:uid', async (req, res) => {
 });
 
 // GET /api/orders/seller/:uid - Get orders containing items from this seller
-router.get('/seller/:uid', async (req, res) => {
+router.get('/seller/:uid', [
+    param('uid').isString().notEmpty(),
+    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    validate
+], async (req, res) => {
   try {
     const { uid } = req.params;
     const page = parseInt(req.query.page) || 1;
@@ -281,10 +316,21 @@ router.get('/seller/:uid', async (req, res) => {
 });
 
 // get single order with auto-update
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticate, [
+    param('id').isMongoId().withMessage('Valid Order ID required'),
+    validate
+], async (req, res) => {
   try {
     let order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Verify ownership or seller involvement
+    if (order.firebaseUid !== req.user.uid) {
+      const isSellerOfItems = order.items.some(i => i.sellerId === req.user.uid);
+      if (!isSellerOfItems) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
 
     // Auto-update
     order = await updateOrderStatusBasedOnTime(order);
@@ -298,10 +344,18 @@ router.get('/:id', async (req, res) => {
 });
 
 // Cancel Order
-router.put('/:id/cancel', async (req, res) => {
+router.put('/:id/cancel', authenticate, [
+    param('id').isMongoId(),
+    body('reason').optional().isString().trim().escape(),
+    validate
+], async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (order.firebaseUid !== req.user.uid) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
 
     if (order.status !== 'pending' && order.status !== 'placed' && order.status !== 'Placed' && order.status !== 'Packed') {
       // Allow cancellation if Packed, but maybe restrict if Shipped
@@ -356,11 +410,19 @@ router.put('/:id/cancel', async (req, res) => {
 });
 
 // Request Return (Customer)
-router.put('/:id/return', async (req, res) => {
+router.put('/:id/return', authenticate, [
+    param('id').isMongoId(),
+    body('reason').isString().trim().notEmpty().escape(),
+    validate
+], async (req, res) => {
   try {
     const { reason } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (order.firebaseUid !== req.user.uid) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
 
     if (order.status !== 'Delivered') {
       return res.status(400).json({ message: 'Only delivered orders can be returned' });
@@ -390,7 +452,11 @@ router.put('/:id/return', async (req, res) => {
 });
 
 // Admin Return Action
-router.put('/:id/return-action', async (req, res) => {
+router.put('/:id/return-action', authenticate, verifyAdmin, [
+    param('id').isMongoId(),
+    body('action').isIn(['approve', 'reject']).withMessage('Invalid action'),
+    validate
+], async (req, res) => {
   try {
     const { action } = req.body; // 'approve' or 'reject'
     const order = await Order.findById(req.params.id);
@@ -430,7 +496,13 @@ router.put('/:id/return-action', async (req, res) => {
 });
 
 // Update Order Status (Tracking) - Manual Admin override
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', authenticate, verifyAdmin, [
+    param('id').isMongoId(),
+    body('status').isString().notEmpty().escape(),
+    body('location').optional().isString().trim().escape(),
+    body('description').optional().isString().trim().escape(),
+    validate
+], async (req, res) => {
   try {
     const { status, location, description } = req.body;
     const order = await Order.findById(req.params.id);

@@ -9,7 +9,6 @@ const startOrderScheduler = () => {
     setInterval(async () => {
         // Skip run if database is not connected
         if (mongoose.connection.readyState !== 1) {
-            console.log('Order Scheduler: Skipping run, database not connected.');
             return;
         }
 

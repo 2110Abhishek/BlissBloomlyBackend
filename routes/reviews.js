@@ -5,6 +5,9 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { analyzeReview } = require('../utils/sentimentAnalyzer');
+const authenticate = require('../middleware/authenticate');
+const { body, param, query } = require('express-validator');
+const validate = require('../middleware/validate');
 
 // Helper to update product rating
 const updateProductRating = async (productId) => {
@@ -21,7 +24,12 @@ const updateProductRating = async (productId) => {
 };
 
 // GET /api/reviews/:productId
-router.get('/:productId', async (req, res) => {
+router.get('/:productId', [
+    param('productId').isString().notEmpty().escape(),
+    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+    validate
+], async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 5;
@@ -50,9 +58,17 @@ router.get('/:productId', async (req, res) => {
 });
 
 // POST /api/reviews
-router.post('/', async (req, res) => {
+router.post('/', authenticate, [
+    body('productId').isString().notEmpty().escape(),
+    body('rating').isFloat({ min: 1, max: 5 }).toFloat(),
+    body('comment').isString().trim().notEmpty().escape(),
+    body('images').optional().isArray(),
+    body('images.*').optional().isURL(),
+    validate
+], async (req, res) => {
     try {
-        const { productId, firebaseUid, rating, comment, images } = req.body;
+        const { productId, rating, comment, images } = req.body;
+        const firebaseUid = req.user.uid;
 
         // Find User
         const user = await User.findOne({ firebaseUid });

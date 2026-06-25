@@ -1,14 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const UnblockRequest = require('../models/UnblockRequest');
+const authenticate = require('../middleware/authenticate');
+const { body, param } = require('express-validator');
+const validate = require('../middleware/validate');
+const { authLimiter } = require('../middleware/rateLimiters');
+const logger = require('../utils/logger');
 
 // POST /api/users/request-unblock
-router.post('/request-unblock', async (req, res) => {
+router.post('/request-unblock', authLimiter, [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+    body('reason').isString().trim().notEmpty().escape().withMessage('Reason is required'),
+    validate
+], async (req, res) => {
     const { email, reason } = req.body;
-
-    if (!email || !reason) {
-        return res.status(400).json({ message: 'Email and reason are required' });
-    }
 
     try {
         // Check if a pending request already exists
@@ -31,9 +36,9 @@ router.post('/request-unblock', async (req, res) => {
 });
 
 // GET /api/users/wishlist
-router.get('/wishlist/:uid', async (req, res) => {
+router.get('/wishlist/:uid', authenticate, async (req, res) => {
     try {
-        const { uid } = req.params;
+        const uid = req.user.uid;
         const User = require('../models/User');
         const user = await User.findOne({ firebaseUid: uid }).populate('wishlist');
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -45,9 +50,13 @@ router.get('/wishlist/:uid', async (req, res) => {
 });
 
 // POST /api/users/wishlist/toggle
-router.post('/wishlist/toggle', async (req, res) => {
+router.post('/wishlist/toggle', authenticate, [
+    body('productId').isMongoId().withMessage('Valid Product ID is required'),
+    validate
+], async (req, res) => {
     try {
-        const { uid, productId } = req.body;
+        const { productId } = req.body;
+        const uid = req.user.uid;
         const User = require('../models/User');
         const user = await User.findOne({ firebaseUid: uid });
 
@@ -79,8 +88,14 @@ router.post('/wishlist/toggle', async (req, res) => {
 });
 
 // POST /api/users/sync
-router.post('/sync', async (req, res) => {
-    const { uid, email, displayName, photoURL } = req.body;
+router.post('/sync', authenticate, authLimiter, [
+    body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+    body('displayName').optional({ checkFalsy: true }).isString().trim().escape(),
+    body('photoURL').optional({ checkFalsy: true }).isURL(),
+    validate
+], async (req, res) => {
+    const { email, displayName, photoURL } = req.body;
+    const uid = req.user.uid;
     const User = require('../models/User');
 
     try {
@@ -112,8 +127,10 @@ router.post('/sync', async (req, res) => {
         }
 
         await user.save();
+        logger.info(`Successful account sync for user: ${user.email || user.firebaseUid} (IP: ${req.ip})`);
         res.json(user);
     } catch (err) {
+        logger.error(`Account sync failed: ${err.message} (IP: ${req.ip})`);
         console.error("User Sync Error", err);
         res.status(500).json({ message: 'Server Error' });
     }
@@ -122,11 +139,12 @@ router.post('/sync', async (req, res) => {
 // --- Address Book Routes ---
 
 // GET /api/users/address/:uid
-router.get('/address/:uid', async (req, res) => {
+router.get('/address/:uid', authenticate, async (req, res) => {
     try {
-        console.log(`Fetching addresses for UID: ${req.params.uid}`);
+        const uid = req.user.uid;
+        console.log(`Fetching addresses for UID: ${uid}`);
         const User = require('../models/User');
-        const user = await User.findOne({ firebaseUid: req.params.uid });
+        const user = await User.findOne({ firebaseUid: uid });
         if (!user) {
             console.log("User not found during fetch address");
             return res.status(404).json({ message: 'User not found' });
@@ -140,9 +158,21 @@ router.get('/address/:uid', async (req, res) => {
 });
 
 // POST /api/users/address/add
-router.post('/address/add', async (req, res) => {
+router.post('/address/add', authenticate, [
+    body('address').isObject(),
+    body('address.name').isString().trim().notEmpty().escape(),
+    body('address.address').isString().trim().notEmpty().escape(),
+    body('address.city').isString().trim().notEmpty().escape(),
+    body('address.state').isString().trim().notEmpty().escape(),
+    body('address.zip').isString().trim().notEmpty().escape(),
+    body('address.phone').isString().trim().notEmpty().escape(),
+    body('address.altPhone').optional({ checkFalsy: true }).isString().trim().escape(),
+    body('address.isDefault').optional().isBoolean(),
+    validate
+], async (req, res) => {
     try {
-        const { uid, address } = req.body; // address is object
+        const { address } = req.body; // address is object
+        const uid = req.user.uid;
         console.log(`Adding address for UID: ${uid}`, address);
 
         const User = require('../models/User');
@@ -174,9 +204,13 @@ router.post('/address/add', async (req, res) => {
 });
 
 // DELETE /api/users/address/delete/:uid/:addressId
-router.delete('/address/delete/:uid/:addressId', async (req, res) => {
+router.delete('/address/delete/:uid/:addressId', authenticate, [
+    param('addressId').isMongoId().withMessage('Valid Address ID is required'),
+    validate
+], async (req, res) => {
     try {
-        const { uid, addressId } = req.params;
+        const { addressId } = req.params;
+        const uid = req.user.uid;
         const User = require('../models/User');
         const user = await User.findOne({ firebaseUid: uid });
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -191,9 +225,13 @@ router.delete('/address/delete/:uid/:addressId', async (req, res) => {
 });
 
 // PUT /api/users/address/default/:uid/:addressId
-router.put('/address/default/:uid/:addressId', async (req, res) => {
+router.put('/address/default/:uid/:addressId', authenticate, [
+    param('addressId').isMongoId().withMessage('Valid Address ID is required'),
+    validate
+], async (req, res) => {
     try {
-        const { uid, addressId } = req.params;
+        const { addressId } = req.params;
+        const uid = req.user.uid;
         const User = require('../models/User');
         const user = await User.findOne({ firebaseUid: uid });
         if (!user) return res.status(404).json({ message: 'User not found' });

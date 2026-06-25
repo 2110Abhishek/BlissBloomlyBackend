@@ -2,10 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const { processMessage } = require('../utils/chatbotBrain');
+const { aiLimiter } = require('../middleware/rateLimiters');
 
 // POST /api/chatbot
 // Body: { message: "query string" }
-router.post('/', async (req, res) => {
+router.post('/', aiLimiter, async (req, res) => {
     try {
         const { message } = req.body;
 

@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
 const Notification = require('../models/Notification'); // Import Notification model
+const authenticate = require('../middleware/authenticate');
+const verifyAdmin = require('../middleware/verifyAdmin');
 
 // GET /api/coupons - Get all coupons (Admin)
-router.get('/', async (req, res) => {
+router.get('/', authenticate, verifyAdmin, async (req, res) => {
     try {
         const coupons = await Coupon.find().sort({ createdAt: -1 });
         res.json(coupons);
@@ -14,7 +16,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/coupons - Create a new coupon (Admin)
-router.post('/', async (req, res) => {
+router.post('/', authenticate, verifyAdmin, async (req, res) => {
     const { code, type, value, minOrderValue, maxDiscount, expiryDate, usageLimit, description, applicableCategories } = req.body;
 
     try {
@@ -57,7 +59,7 @@ router.post('/', async (req, res) => {
 });
 
 // DELETE /api/coupons/:id - Delete a coupon (Admin)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, verifyAdmin, async (req, res) => {
     try {
         await Coupon.findByIdAndDelete(req.params.id);
         res.json({ message: 'Coupon deleted' });
@@ -67,7 +69,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // PUT /api/coupons/:id - Update a coupon (Admin)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, verifyAdmin, async (req, res) => {
     const { code, type, value, minOrderValue, maxDiscount, expiryDate, usageLimit, description, isActive, applicableCategories } = req.body;
 
     try {
