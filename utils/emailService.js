@@ -171,7 +171,7 @@ const sendOrderShippedEmail = async (order) => {
         `).join('')}
       </table>
       <p style="margin-top: 24px; text-align: center;">
-        <a href="https://bliss-bloomly-5xgd.vercel.app/orders/${order._id}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Track Your Order</a>
+        <a href="https://bliss-bloomly-5xgd.vercel.app/orders/${order._id}/track" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Track Your Order</a>
       </p>
       <p style="font-size: 13px; color: #666; padding-bottom: 16px; margin-top: 24px;">
         Need help? Contact us anytime.
